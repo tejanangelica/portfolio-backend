@@ -65,18 +65,24 @@ app.use('/api/contact', limiter);
 
 // Health check endpoint
 app.get('/', (req, res) => {
+  console.log('Health check requested from:', req.ip);
   res.status(200).json({
     status: 'OK',
     message: 'Portfolio Backend API is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
 app.get('/api/health', (req, res) => {
+  console.log('API health check requested from:', req.ip);
   res.status(200).json({
     status: 'OK',
     message: 'Contact form API is ready',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    emailConfigured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS)
   });
 });
 

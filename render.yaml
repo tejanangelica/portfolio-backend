@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: tejana-backend
+    env: node
+    plan: free
+    buildCommand: npm install --production
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: 587
+      - key: SITE_NAME
+        value: PORTFOLIO
+      - key: EMAIL_FROM
+        sync: false
+      - key: FRONTEND_URL
+        value: https://portfolio-frontend-tejana.vercel.app
+    healthCheckPath: /api/health
+    autoDeploy: true
+    disk:
+      name: tejana-backend-disk
+      mountPath: /opt/render/project/src
+      sizeGB: 1
