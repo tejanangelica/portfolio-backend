@@ -28,6 +28,7 @@ const limiter = rateLimit({
 // CORS configuration - Allow your Vercel domain and local development
 const allowedOrigins = [
   'https://portfolio-frontend-tejana.vercel.app',
+  'https://tejana-portfolio.vercel.app',
   'http://localhost:3000',
   'http://localhost:5500',
   'http://127.0.0.1:5500',
@@ -41,24 +42,44 @@ if (process.env.FRONTEND_URL) {
 
 app.use(cors({
   origin: function (origin, callback) {
+    console.log('CORS check for origin:', origin);
+
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('No origin - allowing request');
+      return callback(null, true);
+    }
 
     if (allowedOrigins.indexOf(origin) !== -1) {
+      console.log('Origin allowed:', origin);
       callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);
+      console.log('Allowed origins:', allowedOrigins);
       callback(new Error('Not allowed by CORS'));
     }
   },
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  credentials: true,
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
 }));
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Handle preflight requests manually
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Origin', req.headers.origin);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    return res.status(200).end();
+  }
+  next();
+});
 
 // Apply rate limiting to contact form endpoint
 app.use('/api/contact', limiter);
@@ -89,8 +110,10 @@ app.get('/api/health', (req, res) => {
 // Contact form endpoint
 app.post('/api/contact', async (req, res) => {
   try {
-    console.log('Contact form submission received');
-    
+    console.log('Contact form submission received from:', req.ip);
+    console.log('Request headers:', req.headers);
+    console.log('Request body:', req.body);
+
     // Check for required environment variables
     const requiredEnvVars = ['EMAIL_USER', 'EMAIL_PASS', 'SITE_NAME', 'EMAIL_FROM'];
     const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
