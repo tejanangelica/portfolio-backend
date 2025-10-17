@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Angelica Tejana's creative portfolio - static website",
   "scripts": {
+    "start": "node server.js",
     "dev": "echo 'Open index.html in your browser or use Live Server extension'",
     "build": "echo 'Static site - no build required'"
   },
