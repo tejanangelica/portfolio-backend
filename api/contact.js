@@ -1,20 +1,15 @@
 const nodemailer = require('nodemailer');
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   // Set CORS headers first
-  res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Content-Type', 'application/json');
 
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
-    res.status(200).json({ success: true });
-    return;
+    return res.status(200).json({ success: true });
   }
 
   // Only allow POST requests
@@ -26,6 +21,9 @@ module.exports = async (req, res) => {
   }
 
   try {
+    // Log for debugging
+    console.log('Contact API called');
+
     // Check for required environment variables
     const requiredEnvVars = ['EMAIL_USER', 'EMAIL_PASS', 'SITE_NAME', 'EMAIL_FROM'];
     const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
@@ -38,20 +36,12 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Create nodemailer transporter inside the function for better error handling
-    const transporter = nodemailer.createTransporter({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
-    const { fullname, email, message } = req.body;
+    // Get request body (Vercel automatically parses JSON)
+    const { fullname, email, message } = req.body || {};
 
     // Validation
     if (!fullname || !email || !message) {
+      console.error('Validation failed - missing fields:', { fullname: !!fullname, email: !!email, message: !!message });
       return res.status(400).json({
         success: false,
         error: 'All fields are required'
@@ -67,12 +57,43 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Sanitize inputs (basic)
+    // Sanitize inputs
     const sanitizedData = {
       fullname: fullname.trim().substring(0, 100),
       email: email.trim().toLowerCase().substring(0, 100),
       message: message.trim().substring(0, 1000)
     };
+
+    // Email validation regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide a valid email address'
+      });
+    }
+
+    console.log('Validation passed');
+
+    // Sanitize inputs
+    const sanitizedData = {
+      fullname: fullname.trim().substring(0, 100),
+      email: email.trim().toLowerCase().substring(0, 100),
+      message: message.trim().substring(0, 1000)
+    };
+
+    console.log('Data sanitized');
+
+    // Create nodemailer transporter
+    const transporter = nodemailer.createTransporter({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    console.log('Transporter created');
 
     // Email content
     const mailOptions = {
@@ -197,7 +218,9 @@ Submitted on: ${new Date().toLocaleString()}
 
     // Verify transporter before sending
     try {
+      console.log('Verifying transporter...');
       await transporter.verify();
+      console.log('Transporter verified successfully');
     } catch (verifyError) {
       console.error('Email transporter verification failed:', verifyError);
       return res.status(500).json({
@@ -207,6 +230,7 @@ Submitted on: ${new Date().toLocaleString()}
     }
 
     // Send email
+    console.log('Sending email...');
     const info = await transporter.sendMail(mailOptions);
 
     console.log('Email sent successfully:', info.messageId);
@@ -218,6 +242,7 @@ Submitted on: ${new Date().toLocaleString()}
 
   } catch (error) {
     console.error('Error in contact API:', error);
+    console.error('Error stack:', error.stack);
 
     // Handle specific error types
     if (error.code === 'EAUTH') {
@@ -240,4 +265,4 @@ Submitted on: ${new Date().toLocaleString()}
       error: 'Failed to send message. Please try again later.'
     });
   }
-};
+}
