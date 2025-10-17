@@ -1,43 +1,7 @@
-const express = require('express');
 const nodemailer = require('nodemailer');
-const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-require('dotenv').config();
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Security middleware
-app.use(helmet());
-
-// Rate limiting - prevent spam
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
-  message: {
-    error: 'Too many contact form submissions, please try again later.'
-  }
-});
-
-// CORS configuration
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? ['https://your-domain.vercel.app'] // Replace with your actual Vercel domain
-    : ['http://localhost:3000', 'http://127.0.0.1:5500', 'http://localhost:5500'],
-  methods: ['POST'],
-  credentials: true
-}));
-
-// Body parsing middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Apply rate limiting to contact form endpoint
-app.use('/api/contact', limiter);
 
 // Create nodemailer transporter
-const transporter = nodemailer.createTransport({
+const transporter = nodemailer.createTransporter({
   host: 'smtp.gmail.com',
   port: 587,
   secure: false, // true for 465, false for other ports
@@ -56,8 +20,30 @@ transporter.verify((error, success) => {
   }
 });
 
-// Contact form endpoint
-app.post('/api/contact', async (req, res) => {
+module.exports = async (req, res) => {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    return res.status(405).json({
+      success: false,
+      error: 'Method not allowed'
+    });
+  }
+
   try {
     const { fullname, email, message } = req.body;
 
@@ -224,20 +210,4 @@ Submitted on: ${new Date().toLocaleString()}
       error: 'Failed to send message. Please try again later.'
     });
   }
-});
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'OK',
-    message: 'Contact form server is running'
-  });
-});
-
-// Start server
-app.listen(PORT, () => {
-  console.log(`Contact form server running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/api/health`);
-});
-
-module.exports = app;
+};

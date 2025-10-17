@@ -286,7 +286,12 @@ if (form) {
     formBtn.setAttribute("disabled", "");
 
     try {
-      const response = await fetch("http://localhost:3000/api/contact", {
+      // Use relative URL for production, localhost for development
+      const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? "http://localhost:3000/api/contact"
+        : "/api/contact";
+
+      const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
