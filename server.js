@@ -320,7 +320,7 @@ Submitted on: ${new Date().toLocaleString()}
 });
 
 // Handle 404 for unknown routes
-app.use('*', (req, res) => {
+app.use((req, res) => {
   res.status(404).json({
     success: false,
     error: 'Endpoint not found'
