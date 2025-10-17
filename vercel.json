@@ -1,4 +1,14 @@
 {
+  "buildCommand": "npm run build",
+  "outputDirectory": ".",
+  "installCommand": "npm install",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/api/contact",
+      "destination": "/api/contact.js"
+    }
+  ],
   "functions": {
     "api/contact.js": {
       "maxDuration": 10
