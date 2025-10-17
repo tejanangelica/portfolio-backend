@@ -1,0 +1,25 @@
+{
+  "name": "angelica-tejana-portfolio-frontend",
+  "version": "1.0.0",
+  "description": "Angelica Tejana's creative portfolio - frontend static website",
+  "scripts": {
+    "dev": "echo 'Open index.html in your browser or use Live Server extension'",
+    "build": "echo 'Static site - no build required'",
+    "preview": "echo 'Use Live Server extension in VS Code or open index.html directly'"
+  },
+  "keywords": [
+    "portfolio",
+    "static-site",
+    "creative",
+    "frontend",
+    "vercel"
+  ],
+  "author": "Angelica Tejana",
+  "license": "MIT",
+  "homepage": "https://tejana-portfolio.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tejanangelica/portfolio.git",
+    "directory": "frontend"
+  }
+}
