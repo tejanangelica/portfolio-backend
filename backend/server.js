@@ -25,14 +25,36 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
-// CORS configuration - Allow your Vercel domain
+// CORS configuration - Allow your Vercel domain and local development
+const allowedOrigins = [
+  'https://tejana-portfolio.vercel.app',
+  'https://angelica-tejana-portfolio.vercel.app',
+  'https://portfolio-frontend-angelica.vercel.app',
+  'https://portfolio-frontend-tejana.vercel.app',
+  'https://angelica-portfolio.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5500',
+  'http://127.0.0.1:5500',
+  'http://127.0.0.1:3000'
+];
+
+// Add any custom domain if specified in environment
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
 app.use(cors({
-  origin: [
-    'https://tejana-portfolio.vercel.app',
-    'http://localhost:3000',
-    'http://127.0.0.1:5500',
-    'http://localhost:5500'
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -108,13 +130,23 @@ app.post('/api/contact', async (req, res) => {
     };
 
     console.log('Creating email transporter...');
+    console.log('Email config check:');
+    console.log('- EMAIL_USER:', process.env.EMAIL_USER ? 'Set' : 'NOT SET');
+    console.log('- EMAIL_PASS:', process.env.EMAIL_PASS ? `Set (${process.env.EMAIL_PASS.length} chars)` : 'NOT SET');
+    console.log('- EMAIL_HOST:', process.env.EMAIL_HOST);
+    console.log('- EMAIL_PORT:', process.env.EMAIL_PORT);
 
-    // Create nodemailer transporter
+    // Create nodemailer transporter with explicit configuration
     const transporter = nodemailer.createTransporter({
-      service: 'gmail',
+      host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.EMAIL_PORT) || 587,
+      secure: false, // true for 465, false for other ports
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
+      },
+      tls: {
+        rejectUnauthorized: false
       }
     });
 
@@ -123,7 +155,10 @@ app.post('/api/contact', async (req, res) => {
       await transporter.verify();
       console.log('Email transporter verified successfully');
     } catch (verifyError) {
-      console.error('Email transporter verification failed:', verifyError);
+      console.error('Email transporter verification failed:');
+      console.error('Error code:', verifyError.code);
+      console.error('Error message:', verifyError.message);
+      console.error('Full error:', verifyError);
       return res.status(500).json({
         success: false,
         error: 'Email service is currently unavailable. Please try again later.'
@@ -306,10 +341,19 @@ app.use((error, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Portfolio Backend API running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Allowed CORS origins:`, allowedOrigins);
+
+  // Log important environment variables (without sensitive data)
+  console.log('Configuration:');
+  console.log(`- EMAIL_HOST: ${process.env.EMAIL_HOST || 'Not set'}`);
+  console.log(`- EMAIL_PORT: ${process.env.EMAIL_PORT || 'Not set'}`);
+  console.log(`- EMAIL_USER: ${process.env.EMAIL_USER ? 'Set' : 'Not set'}`);
+  console.log(`- EMAIL_PASS: ${process.env.EMAIL_PASS ? 'Set' : 'Not set'}`);
+  console.log(`- SITE_NAME: ${process.env.SITE_NAME || 'Not set'}`);
 });
 
 module.exports = app;
