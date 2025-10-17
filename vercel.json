@@ -1,8 +1,10 @@
 {
-  "version": 2,
   "functions": {
     "api/contact.js": {
       "maxDuration": 30
+    },
+    "api/test.js": {
+      "maxDuration": 10
     }
   }
 }
