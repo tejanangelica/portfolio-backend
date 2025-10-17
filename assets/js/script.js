@@ -286,10 +286,10 @@ if (form) {
     formBtn.setAttribute("disabled", "");
 
     try {
-      // Use relative URL for production, localhost for development
+      // Use Render backend for production, localhost for development
       const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
         ? "http://localhost:3000/api/contact"
-        : "/api/contact";
+        : "https://portfolio-backend-REPLACE_WITH_YOUR_RENDER_URL.onrender.com/api/contact";
 
       const response = await fetch(apiUrl, {
         method: "POST",

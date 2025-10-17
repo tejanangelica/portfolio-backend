@@ -1,33 +1,76 @@
+const express = require('express');
 const nodemailer = require('nodemailer');
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+require('dotenv').config();
 
-module.exports = async (req, res) => {
-  // Set CORS headers first
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Content-Type', 'application/json');
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    return res.status(200).json({ success: true });
-  }
+// Security middleware
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
-  // Only allow POST requests
-  if (req.method !== 'POST') {
-    return res.status(405).json({
-      success: false,
-      error: 'Method not allowed'
-    });
-  }
+// Rate limiting - prevent spam
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 requests per windowMs
+  message: {
+    success: false,
+    error: 'Too many contact form submissions, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
+// CORS configuration - Allow your Vercel domain
+app.use(cors({
+  origin: [
+    'https://tejana-portfolio.vercel.app',
+    'http://localhost:3000',
+    'http://127.0.0.1:5500',
+    'http://localhost:5500'
+  ],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Apply rate limiting to contact form endpoint
+app.use('/api/contact', limiter);
+
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    message: 'Portfolio Backend API is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    message: 'Contact form API is ready',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Contact form endpoint
+app.post('/api/contact', async (req, res) => {
   try {
-    // Log for debugging
-    console.log('Contact API called');
-
+    console.log('Contact form submission received');
+    
     // Check for required environment variables
     const requiredEnvVars = ['EMAIL_USER', 'EMAIL_PASS', 'SITE_NAME', 'EMAIL_FROM'];
     const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-
+    
     if (missingVars.length > 0) {
       console.error('Missing environment variables:', missingVars);
       return res.status(500).json({
@@ -36,12 +79,11 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Get request body (Vercel automatically parses JSON)
-    const { fullname, email, message } = req.body || {};
+    const { fullname, email, message } = req.body;
 
     // Validation
     if (!fullname || !email || !message) {
-      console.error('Validation failed - missing fields:', { fullname: !!fullname, email: !!email, message: !!message });
+      console.log('Validation failed - missing fields');
       return res.status(400).json({
         success: false,
         error: 'All fields are required'
@@ -51,6 +93,7 @@ module.exports = async (req, res) => {
     // Email validation regex
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
+      console.log('Validation failed - invalid email format');
       return res.status(400).json({
         success: false,
         error: 'Please provide a valid email address'
@@ -64,25 +107,7 @@ module.exports = async (req, res) => {
       message: message.trim().substring(0, 1000)
     };
 
-    // Email validation regex
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Please provide a valid email address'
-      });
-    }
-
-    console.log('Validation passed');
-
-    // Sanitize inputs
-    const sanitizedData = {
-      fullname: fullname.trim().substring(0, 100),
-      email: email.trim().toLowerCase().substring(0, 100),
-      message: message.trim().substring(0, 1000)
-    };
-
-    console.log('Data sanitized');
+    console.log('Creating email transporter...');
 
     // Create nodemailer transporter
     const transporter = nodemailer.createTransporter({
@@ -93,7 +118,17 @@ module.exports = async (req, res) => {
       }
     });
 
-    console.log('Transporter created');
+    // Verify transporter
+    try {
+      await transporter.verify();
+      console.log('Email transporter verified successfully');
+    } catch (verifyError) {
+      console.error('Email transporter verification failed:', verifyError);
+      return res.status(500).json({
+        success: false,
+        error: 'Email service is currently unavailable. Please try again later.'
+      });
+    }
 
     // Email content
     const mailOptions = {
@@ -216,33 +251,19 @@ Submitted on: ${new Date().toLocaleString()}
       `
     };
 
-    // Verify transporter before sending
-    try {
-      console.log('Verifying transporter...');
-      await transporter.verify();
-      console.log('Transporter verified successfully');
-    } catch (verifyError) {
-      console.error('Email transporter verification failed:', verifyError);
-      return res.status(500).json({
-        success: false,
-        error: 'Email service is currently unavailable. Please try again later.'
-      });
-    }
-
     // Send email
     console.log('Sending email...');
     const info = await transporter.sendMail(mailOptions);
 
     console.log('Email sent successfully:', info.messageId);
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: 'Your message has been sent successfully!'
     });
 
   } catch (error) {
     console.error('Error in contact API:', error);
-    console.error('Error stack:', error.stack);
 
     // Handle specific error types
     if (error.code === 'EAUTH') {
@@ -260,9 +281,35 @@ Submitted on: ${new Date().toLocaleString()}
     }
 
     // Generic error response
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       error: 'Failed to send message. Please try again later.'
     });
   }
-}
+});
+
+// Handle 404 for unknown routes
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Endpoint not found'
+  });
+});
+
+// Global error handler
+app.use((error, req, res, next) => {
+  console.error('Global error handler:', error);
+  res.status(500).json({
+    success: false,
+    error: 'Internal server error'
+  });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Portfolio Backend API running on port ${PORT}`);
+  console.log(`Health check: http://localhost:${PORT}/api/health`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+module.exports = app;

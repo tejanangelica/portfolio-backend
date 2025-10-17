@@ -1,23 +1,17 @@
 {
   "name": "angelica-tejana-portfolio",
   "version": "1.0.0",
-  "description": "Angelica Tejana's creative portfolio - static site with serverless contact form",
+  "description": "Angelica Tejana's creative portfolio - static website",
   "scripts": {
-    "dev": "nodemon server.js",
+    "dev": "echo 'Open index.html in your browser or use Live Server extension'",
     "build": "echo 'Static site - no build required'"
   },
   "keywords": [
     "portfolio",
     "static-site",
-    "serverless",
+    "creative",
     "vercel"
   ],
   "author": "Angelica Tejana",
-  "license": "MIT",
-  "dependencies": {
-    "nodemailer": "^7.0.9"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.2"
-  }
+  "license": "MIT"
 }
