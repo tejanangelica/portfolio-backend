@@ -13,17 +13,17 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// Rate limiting - prevent spam
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
-  message: {
-    success: false,
-    error: 'Too many contact form submissions, please try again later.'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// Rate limiting - temporarily disabled for testing
+// const limiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 5, // limit each IP to 5 requests per windowMs
+//   message: {
+//     success: false,
+//     error: 'Too many contact form submissions, please try again later.'
+//   },
+//   standardHeaders: true,
+//   legacyHeaders: false,
+// });
 
 // CORS configuration - Allow your Vercel domain and local development
 const allowedOrigins = [
@@ -81,8 +81,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Apply rate limiting to contact form endpoint
-app.use('/api/contact', limiter);
+// Apply rate limiting to contact form endpoint - temporarily disabled for testing
+// app.use('/api/contact', limiter);
 
 // Health check endpoint
 app.get('/', (req, res) => {
