@@ -299,6 +299,23 @@ if (form) {
         body: JSON.stringify(data)
       });
 
+      // Check if response is ok
+      if (!response.ok) {
+        // Try to parse JSON error response
+        let errorMessage = "Failed to send message. Please try again.";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          // If JSON parsing fails, it might be an HTML error page
+          console.error("Failed to parse error response as JSON:", parseError);
+          errorMessage = `Server error (${response.status}). Please try again later.`;
+        }
+        showFormMessage(errorMessage, "error");
+        return;
+      }
+
+      // Parse successful response
       const result = await response.json();
 
       if (result.success) {
@@ -313,7 +330,15 @@ if (form) {
 
     } catch (error) {
       console.error("Error:", error);
-      showFormMessage("Network error. Please check if the server is running and try again.", "error");
+
+      // Handle different types of errors
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        showFormMessage("Network error. Please check your internet connection and try again.", "error");
+      } else if (error.name === 'SyntaxError') {
+        showFormMessage("Server response error. Please try again later.", "error");
+      } else {
+        showFormMessage("An unexpected error occurred. Please try again.", "error");
+      }
     } finally {
       // Restore button
       formBtn.innerHTML = originalBtnContent;

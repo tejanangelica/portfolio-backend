@@ -1,27 +1,7 @@
 const nodemailer = require('nodemailer');
 
-// Create nodemailer transporter
-const transporter = nodemailer.createTransporter({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
-
-// Verify transporter configuration
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('Email transporter verification failed:', error);
-  } else {
-    console.log('Email transporter is ready to send messages');
-  }
-});
-
 module.exports = async (req, res) => {
-  // Set CORS headers
+  // Set CORS headers first
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -29,10 +9,11 @@ module.exports = async (req, res) => {
     'Access-Control-Allow-Headers',
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
   );
+  res.setHeader('Content-Type', 'application/json');
 
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
+    res.status(200).json({ success: true });
     return;
   }
 
@@ -45,6 +26,28 @@ module.exports = async (req, res) => {
   }
 
   try {
+    // Check for required environment variables
+    const requiredEnvVars = ['EMAIL_USER', 'EMAIL_PASS', 'SITE_NAME', 'EMAIL_FROM'];
+    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+    if (missingVars.length > 0) {
+      console.error('Missing environment variables:', missingVars);
+      return res.status(500).json({
+        success: false,
+        error: 'Server configuration error. Please contact the administrator.'
+      });
+    }
+
+    // Create nodemailer transporter inside the function for better error handling
+    const transporter = nodemailer.createTransporter({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false, // true for 465, false for other ports
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
     const { fullname, email, message } = req.body;
 
     // Validation
@@ -192,20 +195,47 @@ Submitted on: ${new Date().toLocaleString()}
       `
     };
 
+    // Verify transporter before sending
+    try {
+      await transporter.verify();
+    } catch (verifyError) {
+      console.error('Email transporter verification failed:', verifyError);
+      return res.status(500).json({
+        success: false,
+        error: 'Email service is currently unavailable. Please try again later.'
+      });
+    }
+
     // Send email
     const info = await transporter.sendMail(mailOptions);
-    
+
     console.log('Email sent successfully:', info.messageId);
-    
-    res.status(200).json({
+
+    return res.status(200).json({
       success: true,
       message: 'Your message has been sent successfully!'
     });
 
   } catch (error) {
-    console.error('Error sending email:', error);
-    
-    res.status(500).json({
+    console.error('Error in contact API:', error);
+
+    // Handle specific error types
+    if (error.code === 'EAUTH') {
+      return res.status(500).json({
+        success: false,
+        error: 'Email authentication failed. Please contact the administrator.'
+      });
+    }
+
+    if (error.code === 'ECONNECTION') {
+      return res.status(500).json({
+        success: false,
+        error: 'Unable to connect to email service. Please try again later.'
+      });
+    }
+
+    // Generic error response
+    return res.status(500).json({
       success: false,
       error: 'Failed to send message. Please try again later.'
     });
