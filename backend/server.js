@@ -27,11 +27,7 @@ const limiter = rateLimit({
 
 // CORS configuration - Allow your Vercel domain and local development
 const allowedOrigins = [
-  'https://tejana-portfolio.vercel.app',
-  'https://angelica-tejana-portfolio.vercel.app',
-  'https://portfolio-frontend-angelica.vercel.app',
   'https://portfolio-frontend-tejana.vercel.app',
-  'https://angelica-portfolio.vercel.app',
   'http://localhost:3000',
   'http://localhost:5500',
   'http://127.0.0.1:5500',
