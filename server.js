@@ -133,7 +133,7 @@ app.post('/api/contact', async (req, res) => {
     console.log('- EMAIL_PORT:', process.env.EMAIL_PORT);
 
     // Create nodemailer transporter with explicit configuration
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.EMAIL_PORT) || 587,
       secure: false, // true for 465, false for other ports
